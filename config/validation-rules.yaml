@@ -1,0 +1,169 @@
+# ============================================================
+# 校验规则配置
+# 生成内容后逐条校验，不合格项必须修改后再输出
+# ============================================================
+
+# 校验等级
+# - error: 必须修改，否则不允许输出
+# - warning: 建议修改，标注后可输出
+
+# ======== 项目简介校验 ========
+intro:
+  - id: INTRO_LENGTH
+    level: error
+    rule: "单项目 80-180 字，合并项目 80-250 字"
+    check: "统计中文字符数（不含标点和空格），超出范围则裁剪或扩写"
+    fix: "过长则删除冗余修饰词；过短则补充业务场景或技术形态描述"
+
+  - id: INTRO_NO_METRICS
+    level: error
+    rule: "不得包含无数据支撑的量化指标"
+    check: "检测是否包含'提升 XX%'、'DAU XX 万'、'节省 XX 人天'等无来源数据"
+    fix: "删除量化指标，改用定性描述（如'显著提升' → '提升了开发效率'也不行，直接删除或改为描述做了什么）"
+
+  - id: INTRO_FOUR_ELEMENTS
+    level: error
+    rule: "必须体现：行业定位、业务价值、技术形态、战略意义（至少命中 3 项）"
+    check: "逐一检查四个要素是否有对应表述"
+    fix: "缺失要素补充对应描述"
+
+  - id: INTRO_NO_STACK_DUMP
+    level: warning
+    rule: "简介中不应出现具体技术名词堆砌（如 React, Vue, Webpack）"
+    check: "检测是否直接列举 3 个及以上技术框架名"
+    fix: "将技术名词替换为架构级描述（如'基于主流前端框架的跨端方案'）"
+
+# ======== 项目技术校验 ========
+tech:
+  - id: TECH_REAL_DEPS
+    level: error
+    rule: "所有技术选型必须在 package.json 或项目文件中有据可查"
+    check: "逐一核对技术名是否出现在采集数据的 dependencies/devDependencies 中"
+    fix: "删除无法证实的技术项"
+
+  - id: TECH_FORMAT
+    level: error
+    rule: "每项必须是'技术选型 + 解决了什么问题'的句式"
+    check: "检测是否只有技术名无功能描述，或只有描述无技术名"
+    fix: "补全缺失部分"
+
+  - id: TECH_NO_ORPHAN
+    level: warning
+    rule: "不应出现与个人贡献完全无关的技术项"
+    check: "技术项对应的模块在贡献列表中是否有提及"
+    fix: "删除孤立技术项，或在贡献中补充一句配合说明"
+
+  - id: TECH_GROUPING
+    level: warning
+    rule: "技术项应按维度分组，不应无序罗列"
+    check: "检查是否存在分组标题（加粗前缀）"
+    fix: "按架构/状态/UI/工程化等维度重新分组"
+
+# ======== 个人贡献校验 ========
+contribution:
+  - id: CONTRIB_COUNT
+    level: error
+    rule: "单项目 3-5 条，合并项目 3-6 条"
+    check: "统计编号条目数"
+    fix: "过多则合并相近模块；过少则拆分主力模块"
+
+  - id: CONTRIB_NO_DETAIL_LEAK
+    level: error
+    rule: "不得暴露过于具体的实现细节"
+    check: "检测是否包含：具体文件名、CSS 属性名、具体 API 路径、单个 bugfix 描述"
+    keywords_blacklist:
+      - "字体大小"
+      - "margin"
+      - "padding"
+      - "px"
+      - "接口 /api/"
+      - "修复 XX bug"
+      - "调整样式"
+      - ".vue"
+      - ".tsx"
+      - "console.log"
+    fix: "将具体细节抽象为模块级描述，如'样式调整' → '体验优化'"
+
+  - id: CONTRIB_NO_FABRICATION
+    level: error
+    rule: "贡献内容必须有 commit 或文件记录支撑"
+    check: "每条贡献对应的模块是否在 Phase 1 采集数据中出现过"
+    fix: "删除无法追溯的贡献条目"
+
+  - id: CONTRIB_FORMAT
+    level: error
+    rule: "每条必须是'加粗模块名 + 1-2 句描述'格式"
+    check: "检测是否有加粗标记，是否超过 3 句"
+    fix: "补充加粗标记；超长则压缩"
+
+  - id: CONTRIB_TEAM_MENTION
+    level: warning
+    rule: "至少有 1 条提到团队协作（配合/协同/支撑）"
+    check: "扫描是否存在协作相关词汇"
+    fix: "在次要模块或基础建设条目中加入'配合团队'表述"
+
+  - id: CONTRIB_PRIORITY_ORDER
+    level: warning
+    rule: "应按主力模块 → 次要模块 → 基础建设排序"
+    check: "第一条对应的模块是否为提交数最多的模块"
+    fix: "按贡献量重新排序"
+
+  - id: CONTRIB_NO_OVERLAP
+    level: warning
+    rule: "各条目之间不应有明显内容重复"
+    check: "检测相邻条目是否有 >50% 的关键词重叠"
+    fix: "合并重叠条目或重新划分模块边界"
+
+# ======== 全局校验 ========
+global:
+  - id: GLOBAL_CHINESE
+    level: error
+    rule: "输出必须为中文（代码块和技术名词除外）"
+    check: "检测非代码块区域是否存在大段英文"
+    fix: "翻译为中文"
+
+  - id: GLOBAL_NO_GREETING
+    level: error
+    rule: "输出不得包含寒暄、开场白、结束语"
+    check: "检测是否以'好的'、'以下是'、'希望对你有帮助'等开头或结尾"
+    fix: "直接删除"
+
+  - id: GLOBAL_MARKDOWN_FORMAT
+    level: error
+    rule: "输出必须是合法 Markdown，标题层级正确"
+    check: "## 项目简介 / ## 项目技术 / ## 个人贡献 三个二级标题必须存在"
+    fix: "补全缺失标题"
+
+  - id: GLOBAL_CONSISTENCY
+    level: warning
+    rule: "简介中提到的业务模块应在贡献中有对应"
+    check: "提取简介中的业务关键词，检查贡献列表是否覆盖"
+    fix: "简介中删除贡献未覆盖的模块描述，或在贡献中补充"
+
+# ======== 合并项目专项校验 ========
+merge_specific:
+  - id: MERGE_SOURCE_MARK
+    level: warning
+    rule: "合并项目的贡献应标注覆盖范围（横跨哪些系统）"
+    check: "检测合并模式下的贡献条目是否缺少系统/项目标注"
+    fix: "在括号中补注来源系统"
+
+  - id: MERGE_NO_DUPLICATE
+    level: error
+    rule: "合并后不应出现两条描述同一件事的贡献"
+    check: "检测是否有来自不同子项目但内容高度相似的条目"
+    fix: "合并为一条，扩大范围表述"
+
+  - id: MERGE_PRIMARY_CLEAR
+    level: warning
+    rule: "合并后的简介应能看出整体业务全景，而非简单拼接"
+    check: "检测简介是否有明显的拼接痕迹（如'此外'、'另外还有'等过渡词连接不同项目）"
+    fix: "重写为统一视角的全景描述"
+
+# ======== 校验执行规则 ========
+execution:
+  order: "global → intro → tech → contribution → merge_specific"
+  max_iterations: 3  # 最多修改 3 轮，避免死循环
+  on_max_iterations: "输出当前版本并标注仍存在的 warning"
+  error_behavior: "error 级别必须全部通过才可输出"
+  warning_behavior: "warning 级别尽量修复，3 轮后仍存在则标注给用户"

@@ -1,0 +1,72 @@
+# ============================================================
+# 合并规则配置
+# 定义多项目合并为一段经历时的判断标准与行为
+# ============================================================
+
+# 关联性评分维度与权重
+scoring:
+  dimensions:
+    - name: tech_stack_overlap
+      description: 技术栈重叠度（package.json dependencies 交集占比）
+      weight: 30
+      threshold: 0.4  # 交集/并集 ≥ 40% 得满分
+
+    - name: business_domain
+      description: 业务域关联（commit message 中业务关键词重叠）
+      weight: 25
+      method: jaccard_similarity
+      keywords_source: "commit message 括号内模块名 + README 关键词"
+
+    - name: code_reference
+      description: 代码引用关系（workspace/submodule/npm scope）
+      weight: 20
+      signals:
+        - npm_workspace_reference
+        - git_submodule
+        - shared_npm_scope
+        - shared_internal_package
+
+    - name: timeline_continuity
+      description: 时间线连续性（活跃期重叠或间隔 ≤ 2 月）
+      weight: 15
+      max_gap_months: 2
+
+    - name: organization
+      description: 组织归属（git remote 同一 org）
+      weight: 10
+
+# 合并决策阈值
+decision:
+  auto_merge: 60      # ≥ 60 分自动合并
+  suggest_merge: 40   # 40-59 分建议合并，需用户确认
+  no_merge: 39        # < 40 分不合并
+
+# 合并行为
+merge_behavior:
+  # 主项目选择策略
+  primary_project:
+    strategy: "max_commits"  # 可选：max_commits / longest_duration / user_specified
+    fallback: "longest_duration"
+
+  # 模块合并规则
+  module_merge:
+    - when: "子项目模块在主项目中有对应"
+      action: "合并描述，扩大覆盖范围表述"
+    - when: "子项目有独特模块"
+      action: "作为新条目加入贡献列表"
+    - when: "两个项目模块完全相同"
+      action: "合并为一条，强调'跨系统统一'的价值"
+
+  # 项目简介合并
+  intro_merge:
+    max_length: 250
+    strategy: "以主项目为骨架，融入子项目的业务场景扩展"
+
+  # 贡献条目上限
+  max_contributions: 6
+
+# 不可合并的硬性排除条件
+exclusions:
+  - "两个项目技术栈完全不同（前端 vs 后端 vs 移动端均不同）"
+  - "时间间隔超过 12 个月且无代码引用关系"
+  - "属于不同公司/组织"
