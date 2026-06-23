@@ -160,9 +160,53 @@ merge_specific:
     check: "检测简介是否有明显的拼接痕迹（如'此外'、'另外还有'等过渡词连接不同项目）"
     fix: "重写为统一视角的全景描述"
 
+# ======== 项目亮点校验 ========
+highlights:
+  - id: HIGHLIGHT_HAS_EVIDENCE
+    level: error
+    rule: "每个亮点必须有证据来源（文件/依赖/配置）"
+    check: "检测亮点条目是否包含'证据'字段且不为空"
+    fix: "补充证据来源，若无法找到证据则删除该亮点"
+
+  - id: HIGHLIGHT_NO_FABRICATION
+    level: error
+    rule: "亮点必须基于项目中实际存在的技术/配置/代码"
+    check: "证据中提到的文件/依赖是否在采集数据中确实存在"
+    fix: "删除无法证实的亮点"
+
+  - id: HIGHLIGHT_PARTICIPATION_ACCURATE
+    level: error
+    rule: "参与度标记必须准确：有个人 commit 才能标'主导/参与'，否则只能标'项目背景'"
+    check: "对比亮点涉及的文件与用户高频修改文件，无交集则不可标为'主导'"
+    fix: "降级参与度标记"
+
+  - id: HIGHLIGHT_ACTIONABLE
+    level: warning
+    rule: "每个亮点必须附带包装建议（一句可直接写入简历的话）"
+    check: "检测是否有'包装建议'字段且不为空"
+    fix: "补充一句话简历写法"
+
+  - id: HIGHLIGHT_NO_GENERIC
+    level: warning
+    rule: "亮点不应过于泛泛（如'使用了 React'），应体现项目特有的价值"
+    check: "检测亮点描述是否仅为通用技术名，无项目特色"
+    generic_blacklist:
+      - "使用了 React"
+      - "使用了 Vue"
+      - "使用了 TypeScript"
+      - "使用了 Git"
+      - "使用了 ESLint"
+    fix: "具体化：说明这个技术在项目中解决了什么特殊问题"
+
+  - id: HIGHLIGHT_COUNT
+    level: warning
+    rule: "亮点数量 3-8 条为宜，过多则筛选最有价值的"
+    check: "统计亮点条目数"
+    fix: "超过 8 条则按价值排序，保留 Top 8"
+
 # ======== 校验执行规则 ========
 execution:
-  order: "global → intro → tech → contribution → merge_specific"
+  order: "global → intro → tech → contribution → highlights → merge_specific"
   max_iterations: 3  # 最多修改 3 轮，避免死循环
   on_max_iterations: "输出当前版本并标注仍存在的 warning"
   error_behavior: "error 级别必须全部通过才可输出"
