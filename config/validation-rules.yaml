@@ -160,36 +160,30 @@ merge_specific:
     check: "检测简介是否有明显的拼接痕迹（如'此外'、'另外还有'等过渡词连接不同项目）"
     fix: "重写为统一视角的全景描述"
 
-# ======== 项目亮点校验 ========
+# ======== 项目亮点（可选贡献）校验 ========
 highlights:
-  - id: HIGHLIGHT_HAS_EVIDENCE
+  - id: HIGHLIGHT_REAL_EVIDENCE
     level: error
-    rule: "每个亮点必须有证据来源（文件/依赖/配置）"
-    check: "检测亮点条目是否包含'证据'字段且不为空"
-    fix: "补充证据来源，若无法找到证据则删除该亮点"
+    rule: "每个可选贡献条目必须基于项目中实际存在的技术/配置/代码"
+    check: "条目中提到的技术/模块是否在全量采集数据中确实存在（package.json/目录结构/CI 配置等）"
+    fix: "删除无法证实的条目"
 
-  - id: HIGHLIGHT_NO_FABRICATION
+  - id: HIGHLIGHT_RESUME_FORMAT
     level: error
-    rule: "亮点必须基于项目中实际存在的技术/配置/代码"
-    check: "证据中提到的文件/依赖是否在采集数据中确实存在"
-    fix: "删除无法证实的亮点"
+    rule: "每条必须是简历贡献条目格式：加粗模块名 + 1-2 句第一人称描述 + 标签"
+    check: "检测是否有加粗标记、第一人称动词、末尾标签"
+    fix: "重写为标准格式"
 
-  - id: HIGHLIGHT_PARTICIPATION_ACCURATE
+  - id: HIGHLIGHT_NO_DUPLICATE_WITH_CONTRIB
     level: error
-    rule: "参与度标记必须准确：有个人 commit 才能标'主导/参与'，否则只能标'项目背景'"
-    check: "对比亮点涉及的文件与用户高频修改文件，无交集则不可标为'主导'"
-    fix: "降级参与度标记"
-
-  - id: HIGHLIGHT_ACTIONABLE
-    level: warning
-    rule: "每个亮点必须附带包装建议（一句可直接写入简历的话）"
-    check: "检测是否有'包装建议'字段且不为空"
-    fix: "补充一句话简历写法"
+    rule: "可选贡献不得与个人贡献（Phase 4 ③）内容重复"
+    check: "对比可选贡献与个人贡献的模块名和关键词，重叠则删除（升级版写法除外）"
+    fix: "删除重复条目，或改写为升级版并加 ⬆️ 标记"
 
   - id: HIGHLIGHT_NO_GENERIC
     level: warning
-    rule: "亮点不应过于泛泛（如'使用了 React'），应体现项目特有的价值"
-    check: "检测亮点描述是否仅为通用技术名，无项目特色"
+    rule: "不应过于泛泛（如'使用了 React'），应体现项目特有的价值"
+    check: "检测描述是否仅为通用技术名，无项目特色"
     generic_blacklist:
       - "使用了 React"
       - "使用了 Vue"
@@ -200,9 +194,15 @@ highlights:
 
   - id: HIGHLIGHT_COUNT
     level: warning
-    rule: "亮点数量 3-8 条为宜，过多则筛选最有价值的"
-    check: "统计亮点条目数"
-    fix: "超过 8 条则按价值排序，保留 Top 8"
+    rule: "可选贡献 3-6 条为宜"
+    check: "统计条目数"
+    fix: "超过 6 条则按简历价值排序，保留 Top 6"
+
+  - id: HIGHLIGHT_INTERVIEWABLE
+    level: warning
+    rule: "每条应是面试时能展开说 1-2 分钟的内容"
+    check: "检测描述是否过于笼统无法展开（如只有一个词）或过于细节无法升华"
+    fix: "调整粒度到'可展开讨论'的级别"
 
 # ======== 校验执行规则 ========
 execution:
