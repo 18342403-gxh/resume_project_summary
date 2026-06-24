@@ -8,8 +8,11 @@
 
 set -euo pipefail
 
+# 统一排除目录（所有 grep/find 都用这个）
+EXCLUDE_DIRS="--exclude-dir=node_modules --exclude-dir=dist --exclude-dir=.git --exclude-dir=.taro --exclude-dir=build --exclude-dir=.cache --exclude-dir=coverage"
+FIND_PRUNE='-not -path "*/node_modules/*" -not -path "*/.git/*" -not -path "*/dist/*" -not -path "*/.taro/*" -not -path "*/build/*"'
+
 GREEN='\033[0;32m'
-BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
@@ -61,7 +64,7 @@ echo "## 2. 架构特征检测"
 echo ""
 
 echo "### 项目根目录结构"
-ls -1 2>/dev/null | head -30
+ls -1 2>/dev/null | grep -v node_modules | head -30
 echo ""
 
 echo "### src/ 顶层目录"
@@ -88,11 +91,11 @@ else
 fi
 echo ""
 
-# 微前端检测
+# 微前端检测（只检查 package.json，不递归扫描）
 echo "### 微前端检测"
-if grep -rlq "qiankun\|micro-app\|module-federation\|single-spa" . --include="*.json" --include="*.js" --include="*.ts" 2>/dev/null; then
+if grep -qE "qiankun|micro-app|module-federation|single-spa" package.json 2>/dev/null; then
     echo "✅ 检测到微前端相关依赖"
-    grep -rl "qiankun\|micro-app\|module-federation\|single-spa" . --include="*.json" 2>/dev/null | head -5
+    grep -oE "\"(qiankun|@micro-app|module-federation|single-spa)[^\"]*\"" package.json 2>/dev/null
 else
     echo "❌ 未检测到微前端"
 fi
@@ -100,11 +103,21 @@ echo ""
 
 # SSR 检测
 echo "### SSR/SSG 检测"
-if grep -q "next\|nuxt\|gatsby\|astro" package.json 2>/dev/null; then
+if grep -qE "\"next\"|\"nuxt\"|\"gatsby\"|\"astro\"" package.json 2>/dev/null; then
     echo "✅ 检测到 SSR/SSG 框架"
     grep -oE "\"(next|nuxt|gatsby|astro)\"" package.json 2>/dev/null
 else
     echo "❌ 未检测到 SSR/SSG"
+fi
+echo ""
+
+# 跨端检测
+echo "### 跨端框架检测"
+if grep -qE "\"@tarojs|\"taro\"|\"uni-app\"|\"react-native\"|\"flutter\"" package.json 2>/dev/null; then
+    echo "✅ 检测到跨端框架"
+    grep -oE "\"(@tarojs/[^\"]*|taro|uni-app|react-native)\"" package.json 2>/dev/null | head -5
+else
+    echo "❌ 未检测到跨端框架"
 fi
 echo ""
 
@@ -162,13 +175,10 @@ fi
 echo ""
 
 echo "### 测试"
-test_count=$(find . -name "*.test.*" -o -name "*.spec.*" -o -name "__tests__" 2>/dev/null | grep -v node_modules | wc -l | tr -d ' ')
+test_count=$(find . -not -path "*/node_modules/*" -not -path "*/.git/*" \( -name "*.test.*" -o -name "*.spec.*" \) 2>/dev/null | wc -l | tr -d ' ')
 echo "测试文件数：$test_count"
-if [ -f "jest.config.js" ] || [ -f "jest.config.ts" ]; then
-    echo "测试框架：Jest"
-elif [ -f "vitest.config.ts" ] || [ -f "vitest.config.js" ]; then
-    echo "测试框架：Vitest"
-fi
+[ -f "jest.config.js" ] || [ -f "jest.config.ts" ] && echo "测试框架：Jest"
+[ -f "vitest.config.ts" ] || [ -f "vitest.config.js" ] && echo "测试框架：Vitest"
 echo ""
 
 echo "### Lint & 格式化"
@@ -176,7 +186,7 @@ echo "### Lint & 格式化"
 [ -f ".prettierrc" ] || [ -f ".prettierrc.js" ] && echo "✅ Prettier"
 [ -f ".stylelintrc" ] || [ -f ".stylelintrc.js" ] && echo "✅ Stylelint"
 [ -f "commitlint.config.js" ] && echo "✅ Commitlint"
-[ -f ".husky" ] || [ -d ".husky" ] && echo "✅ Husky (Git Hooks)"
+[ -d ".husky" ] && echo "✅ Husky (Git Hooks)"
 echo ""
 
 # ======== 5. 性能相关特征 ========
@@ -188,27 +198,25 @@ if grep -q "\"vite\"" package.json 2>/dev/null; then
     echo "构建工具：Vite"
 elif grep -q "\"webpack\"" package.json 2>/dev/null; then
     echo "构建工具：Webpack"
-elif grep -q "\"turbopack\|\"rspack\"" package.json 2>/dev/null; then
+elif grep -qE "\"turbopack\"|\"rspack\"" package.json 2>/dev/null; then
     echo "构建工具：Turbopack/Rspack"
 fi
 echo ""
 
 echo "### 性能优化信号"
-# 检测懒加载
-lazy_count=$(grep -r "lazy\|React.lazy\|import(" src/ --include="*.ts" --include="*.tsx" --include="*.js" 2>/dev/null | grep -v node_modules | wc -l | tr -d ' ')
-echo "懒加载使用次数：$lazy_count"
+if [ -d "src" ]; then
+    lazy_count=$(grep -r "React.lazy\|import(" src/ $EXCLUDE_DIRS --include="*.ts" --include="*.tsx" --include="*.js" 2>/dev/null | wc -l | tr -d ' ')
+    echo "动态加载使用次数：$lazy_count"
+fi
 
-# 检测虚拟滚动
-if grep -rq "virtual-list\|react-virtualized\|react-window\|vue-virtual-scroller" package.json 2>/dev/null; then
+if grep -qE "virtual-list|react-virtualized|react-window|vue-virtual-scroller" package.json 2>/dev/null; then
     echo "✅ 使用虚拟滚动"
 fi
 
-# 检测 Web Worker
-worker_count=$(find . -name "*.worker.*" 2>/dev/null | grep -v node_modules | wc -l | tr -d ' ')
+worker_count=$(find . -not -path "*/node_modules/*" -not -path "*/.git/*" -name "*.worker.*" 2>/dev/null | wc -l | tr -d ' ')
 echo "Web Worker 文件数：$worker_count"
 
-# 检测缓存策略
-if grep -rq "service-worker\|workbox\|sw.js" . --include="*.json" --include="*.js" --include="*.ts" 2>/dev/null | grep -v node_modules; then
+if grep -qE "service-worker|workbox" package.json 2>/dev/null; then
     echo "✅ 使用 Service Worker"
 fi
 echo ""
@@ -217,12 +225,12 @@ echo ""
 echo "## 6. 安全与监控"
 echo ""
 
-if grep -q "sentry\|bugsnag\|fundebug\|arms\|aegis" package.json 2>/dev/null; then
+if grep -qE "sentry|bugsnag|fundebug|arms|aegis" package.json 2>/dev/null; then
     echo "✅ 错误监控"
-    grep -oE "\"(sentry|@sentry|bugsnag|fundebug|arms|aegis)[^\"]*\"" package.json 2>/dev/null
+    grep -oE "\"(@?sentry[^\"]*|bugsnag|fundebug|arms|aegis)\"" package.json 2>/dev/null
 fi
 
-if grep -rq "埋点\|track\|analytics\|sensors\|growing" . --include="*.json" --include="*.ts" --include="*.js" 2>/dev/null | head -3; then
+if grep -qE "sensors|growing|analytics" package.json 2>/dev/null; then
     echo "✅ 数据埋点"
 fi
 echo ""
@@ -231,47 +239,46 @@ echo ""
 echo "## 7. 代码级亮点"
 echo ""
 
-echo "### 高复用组件 Top 20（被 import 次数最多）"
 if [ -d "src" ]; then
-    grep -r "from.*components/" src/ --include="*.ts" --include="*.tsx" --include="*.vue" --include="*.js" 2>/dev/null | grep -oE "components/[^'\"]*" | sort | uniq -c | sort -rn | head -20 || echo "无数据"
+    echo "### 高复用组件 Top 20（被 import 次数最多）"
+    grep -r "from.*components/" src/ $EXCLUDE_DIRS --include="*.ts" --include="*.tsx" --include="*.vue" --include="*.js" --include="*.jsx" 2>/dev/null | grep -oE "components/[^'\"]*" | sort | uniq -c | sort -rn | head -20 || echo "无数据"
+    echo ""
+
+    echo "### 复杂组件 Top 20（代码行数最多）"
+    if [ -d "src/components" ]; then
+        find src/components -not -path "*/node_modules/*" \( -name "*.tsx" -o -name "*.vue" -o -name "*.jsx" \) 2>/dev/null | xargs wc -l 2>/dev/null | sort -rn | head -20 || echo "无数据"
+    else
+        echo "无 src/components 目录"
+    fi
+    echo ""
+
+    echo "### 通用 Hooks Top 15（被引用次数）"
+    grep -r "from.*hooks/" src/ $EXCLUDE_DIRS --include="*.ts" --include="*.tsx" --include="*.js" 2>/dev/null | grep -oE "hooks/[^'\"]*" | sort | uniq -c | sort -rn | head -15 || echo "无数据"
+    echo ""
+
+    echo "### 工具函数 Top 15（被引用次数）"
+    grep -r "from.*utils/" src/ $EXCLUDE_DIRS --include="*.ts" --include="*.tsx" --include="*.js" 2>/dev/null | grep -oE "utils/[^'\"]*" | sort | uniq -c | sort -rn | head -15 || echo "无数据"
+    echo ""
+
+    echo "### 核心业务页面 Top 20（代码量最大 = 通常最复杂）"
+    find src/pages src/views -not -path "*/node_modules/*" \( -name "*.tsx" -o -name "*.vue" -o -name "*.jsx" \) 2>/dev/null | xargs wc -l 2>/dev/null | sort -rn | head -20 || echo "无数据"
+    echo ""
+
+    echo "### 请求层/服务层"
+    find src -not -path "*/node_modules/*" \( -path "*/api/*" -o -path "*/services/*" -o -path "*/request*" \) 2>/dev/null | head -15 || echo "无数据"
+    echo ""
+
+    echo "### 状态管理模块"
+    find src -not -path "*/node_modules/*" \( -path "*/store/*" -o -path "*/stores/*" -o -path "*/models/*" \) 2>/dev/null | head -15 || echo "无数据"
+    echo ""
+
+    echo "### 中间件/拦截器"
+    find src -not -path "*/node_modules/*" \( -path "*/middleware*" -o -path "*/interceptor*" \) 2>/dev/null | head -10 || echo "无数据"
+    echo ""
+else
+    echo "无 src 目录，跳过代码级扫描"
+    echo ""
 fi
-echo ""
-
-echo "### 复杂组件 Top 20（代码行数最多）"
-if [ -d "src/components" ]; then
-    find src/components -name "*.tsx" -o -name "*.vue" -o -name "*.jsx" 2>/dev/null | xargs wc -l 2>/dev/null | sort -rn | head -20 || echo "无数据"
-fi
-echo ""
-
-echo "### 通用 Hooks Top 15（被引用次数）"
-if [ -d "src" ]; then
-    grep -r "from.*hooks/" src/ --include="*.ts" --include="*.tsx" 2>/dev/null | grep -oE "hooks/[^'\"]*" | sort | uniq -c | sort -rn | head -15 || echo "无数据"
-fi
-echo ""
-
-echo "### 工具函数 Top 15（被引用次数）"
-if [ -d "src" ]; then
-    grep -r "from.*utils/" src/ --include="*.ts" --include="*.tsx" --include="*.js" 2>/dev/null | grep -oE "utils/[^'\"]*" | sort | uniq -c | sort -rn | head -15 || echo "无数据"
-fi
-echo ""
-
-echo "### 核心业务页面 Top 20（代码量最大 = 通常最复杂）"
-if [ -d "src/pages" ] || [ -d "src/views" ]; then
-    find src/pages src/views -name "*.tsx" -o -name "*.vue" -o -name "*.jsx" 2>/dev/null | xargs wc -l 2>/dev/null | sort -rn | head -20 || echo "无数据"
-fi
-echo ""
-
-echo "### 请求层/服务层"
-find src -path "*/api/*" -o -path "*/services/*" -o -path "*/request*" 2>/dev/null | grep -v node_modules | head -15 || echo "无数据"
-echo ""
-
-echo "### 状态管理模块"
-find src -path "*/store/*" -o -path "*/stores/*" -o -path "*/models/*" 2>/dev/null | grep -v node_modules | head -15 || echo "无数据"
-echo ""
-
-echo "### 中间件/拦截器"
-find src -path "*/middleware*" -o -path "*/interceptor*" 2>/dev/null | grep -v node_modules | head -10 || echo "无数据"
-echo ""
 
 # ======== 8. 用户个人在此项目的参与度 ========
 echo "## 8. 用户参与度对照"
@@ -279,7 +286,12 @@ echo ""
 echo "### 用户提交数 vs 总提交数"
 total=$(git log --oneline 2>/dev/null | wc -l | tr -d ' ')
 user_total=$(git log --author="$author" --oneline 2>/dev/null | wc -l | tr -d ' ')
-echo "总提交：$total | 用户提交：$user_total | 占比：$(echo "scale=1; $user_total * 100 / $total" | bc 2>/dev/null || echo "N/A")%"
+if [ "$total" -gt 0 ] 2>/dev/null; then
+    pct=$(echo "scale=1; $user_total * 100 / $total" | bc 2>/dev/null || echo "N/A")
+else
+    pct="N/A"
+fi
+echo "总提交：$total | 用户提交：$user_total | 占比：${pct}%"
 echo ""
 
 echo "### 用户高频修改文件 Top 20"
