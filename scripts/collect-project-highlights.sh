@@ -227,8 +227,54 @@ if grep -rq "埋点\|track\|analytics\|sensors\|growing" . --include="*.json" --
 fi
 echo ""
 
-# ======== 7. 用户个人在此项目的参与度 ========
-echo "## 7. 用户参与度对照"
+# ======== 7. 代码级亮点扫描 ========
+echo "## 7. 代码级亮点"
+echo ""
+
+echo "### 高复用组件 Top 20（被 import 次数最多）"
+if [ -d "src" ]; then
+    grep -r "from.*components/" src/ --include="*.ts" --include="*.tsx" --include="*.vue" --include="*.js" 2>/dev/null | grep -oE "components/[^'\"]*" | sort | uniq -c | sort -rn | head -20 || echo "无数据"
+fi
+echo ""
+
+echo "### 复杂组件 Top 20（代码行数最多）"
+if [ -d "src/components" ]; then
+    find src/components -name "*.tsx" -o -name "*.vue" -o -name "*.jsx" 2>/dev/null | xargs wc -l 2>/dev/null | sort -rn | head -20 || echo "无数据"
+fi
+echo ""
+
+echo "### 通用 Hooks Top 15（被引用次数）"
+if [ -d "src" ]; then
+    grep -r "from.*hooks/" src/ --include="*.ts" --include="*.tsx" 2>/dev/null | grep -oE "hooks/[^'\"]*" | sort | uniq -c | sort -rn | head -15 || echo "无数据"
+fi
+echo ""
+
+echo "### 工具函数 Top 15（被引用次数）"
+if [ -d "src" ]; then
+    grep -r "from.*utils/" src/ --include="*.ts" --include="*.tsx" --include="*.js" 2>/dev/null | grep -oE "utils/[^'\"]*" | sort | uniq -c | sort -rn | head -15 || echo "无数据"
+fi
+echo ""
+
+echo "### 核心业务页面 Top 20（代码量最大 = 通常最复杂）"
+if [ -d "src/pages" ] || [ -d "src/views" ]; then
+    find src/pages src/views -name "*.tsx" -o -name "*.vue" -o -name "*.jsx" 2>/dev/null | xargs wc -l 2>/dev/null | sort -rn | head -20 || echo "无数据"
+fi
+echo ""
+
+echo "### 请求层/服务层"
+find src -path "*/api/*" -o -path "*/services/*" -o -path "*/request*" 2>/dev/null | grep -v node_modules | head -15 || echo "无数据"
+echo ""
+
+echo "### 状态管理模块"
+find src -path "*/store/*" -o -path "*/stores/*" -o -path "*/models/*" 2>/dev/null | grep -v node_modules | head -15 || echo "无数据"
+echo ""
+
+echo "### 中间件/拦截器"
+find src -path "*/middleware*" -o -path "*/interceptor*" 2>/dev/null | grep -v node_modules | head -10 || echo "无数据"
+echo ""
+
+# ======== 8. 用户个人在此项目的参与度 ========
+echo "## 8. 用户参与度对照"
 echo ""
 echo "### 用户提交数 vs 总提交数"
 total=$(git log --oneline 2>/dev/null | wc -l | tr -d ' ')
